@@ -11,4 +11,4 @@ micros:
         name: "Fetch Post"
         description: "Fetch post from Mnet Plus"
         trigger: "schedule"
-        default_interval: "5 minutes"
+        default_interval: "30 minutes"

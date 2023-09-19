@@ -50,7 +50,7 @@ def send_message(post: dict):
     community_id = post["communityId"]
     post_id = post["id"]
 
-    post_link = f"https://www.mnetplus.world/zh-tw/community/post?postId={post_id}&communityId={community_id}"
+    post_link = f"https://www.mnetplus.world/community/post?postId={post_id}&communityId={community_id}"
 
     embeds = []
 
@@ -94,18 +94,27 @@ def send_message(post: dict):
 
 def read_last_updated():
     # Initialize
-    deta = Deta()
+    deta = Deta(project_key="c0rut1urfft_GRLvntq3wFBmZG2fNDhoWw7cTrXTsCSo")
     # This how to connect to or create a database.
-    db = deta.Base("ment_plus")
-    if db.get("last_updated") is None:
-        db.put({"last_updated": datetime.now()})
+    db = deta.Base("mnet_plus_db")
+    last_updated = None
+    data: dict = db.get("last_updated")
+    last_updated = data.get("value")
+    if last_updated is None:
+        last_updated = datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        db.put(key="last_updated", data=last_updated)
+        return last_updated
+    else:
+        return last_updated
 
 
 # write text to last_updated.txt
 def write_last_updated(text: str):
-    with open('last_updated.txt', 'w') as f:
-        f.write(text)
-        f.close()
+    # Initialize
+    deta = Deta(project_key="c0rut1urfft_GRLvntq3wFBmZG2fNDhoWw7cTrXTsCSo")
+    # This how to connect to or create a database.
+    db = deta.Base("mnet_plus_db")
+    db.put(key="last_updated", data=text)
 
 
 def compare_times(time_str1, time_str2):
@@ -153,7 +162,6 @@ def fetch_data():
             write_last_updated(post["createDate"])
 
     print("執行結束")
-
 
 
 fetch_data()
