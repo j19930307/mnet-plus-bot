@@ -36,11 +36,11 @@ def send_message(post: dict):
     # Discord Webhook URL，請將 URL 替換為您自己的 Webhook URL
 
     # 測試
-    webhook_url = ('https://discord.com/api/webhooks/1151347257321476116/NBF-JCl3EFpFL2obrKbRDnpoBCdagJcRzGNgbl1Cu'
-                   '-ZbpIS9o_2tcfCxulMXUS5hFB-K')
+    # webhook_url = ('https://discord.com/api/webhooks/1151347257321476116/NBF-JCl3EFpFL2obrKbRDnpoBCdagJcRzGNgbl1Cu'
+    #                '-ZbpIS9o_2tcfCxulMXUS5hFB-K')
     # 正式
-    # webhook_url = ('https://discord.com/api/webhooks/1152119906981126174'
-    #                '/AE_mVQ_WF_DZowhiS8lDSpcZipiy8lM74z7LflPOzbKfE-auqAKiVbimcb-dkxXooOTK')
+    webhook_url = ('https://discord.com/api/webhooks/1152119906981126174'
+                   '/AE_mVQ_WF_DZowhiS8lDSpcZipiy8lM74z7LflPOzbKfE-auqAKiVbimcb-dkxXooOTK')
 
     # 获取 "content" 字段的数据
     content_data = post["content"]
@@ -132,7 +132,9 @@ def fetch_data():
 
     # 'EL7Z UP': 'P8ioxH-hbHoHNGNcI-uEA'
     user_dicts = {'휘서': 'U2YK9yROhTeXjBQgN0K0r', 'Kei': 'iOr32GLOpmaxgr28VRiFX', '예은': '_M7UYPH6_APF0ZkVe0djw',
-                  '연희': '16TteD-7QRj8T29n4978X', '나나': 'ngJFcSLDTx_BGBgWeRcB_', '유키': 'KYyBYSC2gC9_R6QnWDQyf'}
+                  '연희': '16TteD-7QRj8T29n4978X', '나나': 'ngJFcSLDTx_BGBgWeRcB_', '유키': 'KYyBYSC2gC9_R6QnWDQyf',
+                  '여름': '_YvywsKAvwQyKRrD4tov0'}
+
     user_ids = list(user_dicts.values())
 
     print("開始執行...")
