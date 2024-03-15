@@ -1,9 +1,0 @@
-Flask
-gunicorn
-simplejson
-datetime
-pytz
-requests
-deta
-fastapi
-pydantic
