@@ -23,8 +23,7 @@ jobs:
         pip install -r requirements.txt
     - name: run Python script
       env:
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        FIREBASE_ADMIN_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
         EL7ZUP_WEBHOOK: ${{ secrets.EL7ZUP_WEBHOOK }}
-        UPDATED_AT: ${{ vars.UPDATED_AT }}
       run:
-        python el7zup_bot.py
+        python main.py
