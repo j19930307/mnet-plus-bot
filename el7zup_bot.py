@@ -18,8 +18,8 @@ def convert_to_datetime(date_string):
 
 
 class EL7ZUPBot:
-    def __init__(self):
-        self.__firestore = Firebase()
+    def __init__(self, firebase: Firebase):
+        self.__firestore = firebase
         self.__discord_bot = DiscordBot(webhook_url=os.environ["EL7ZUP_WEBHOOK"])
         self.artist = ARTIST.EL7Z_UP
 
