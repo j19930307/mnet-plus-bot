@@ -26,7 +26,7 @@ class Firebase:
 
     def set_updated_at(self, artist: ARTIST, updated_at: datetime):
         doc_ref = self.__db.collection("artist").document(artist.value)
-        doc_ref.set({
+        doc_ref.update({
             "updated_at": updated_at
         })
 
