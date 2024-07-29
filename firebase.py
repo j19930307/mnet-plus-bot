@@ -5,8 +5,9 @@ from datetime import datetime
 
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1 import FieldFilter
+from google.cloud.firestore_v1.field_path import FieldPath
 
-from artist import ARTIST
 from sns_type import SnsType
 
 
@@ -16,19 +17,13 @@ class Firebase:
         firebase_admin.initialize_app(certificate)
         self.__db = firestore.client()
 
-    def get_updated_at(self, artist: ARTIST):
-        doc_ref = self.__db.collection("artist").document(artist.value)
+    def get_updated_at(self, sns_type: SnsType, id: str) -> datetime:
+        doc_ref = self.__db.collection(sns_type.value).document(id)
         doc = doc_ref.get()
         if doc.exists:
             return doc.to_dict()['updated_at']
         else:
-            return None
-
-    def set_updated_at(self, artist: ARTIST, updated_at: datetime):
-        doc_ref = self.__db.collection("artist").document(artist.value)
-        doc_ref.update({
-            "updated_at": updated_at
-        })
+            return datetime.now()
 
     def base64_decode(self, key) -> dict:
         decoded_bytes = base64.b64decode(key)
@@ -66,7 +61,8 @@ class Firebase:
         return self.__db.collection(type.value).document(id).delete()
 
     def get_subscribed_list(self, type: SnsType):
-        return self.__db.collection(type.value).stream()
+        docs = self.__db.collection(type.value).stream()
+        return [doc for doc in docs if doc.id != "EL7Z UP"]
 
     def get_subscribed_list_from_discord_id(self, type: SnsType, discord_id: str):
         docs = self.__db.collection(type.value).stream()
