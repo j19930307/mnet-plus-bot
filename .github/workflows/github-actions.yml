@@ -6,6 +6,10 @@ on:
   schedule:
     - cron: '*/15 * * * *' # 每 15 分鐘執行一次
 
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   EL7ZUP-Bot:
     runs-on: ubuntu-latest
