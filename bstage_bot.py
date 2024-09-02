@@ -43,6 +43,9 @@ class BstageBot:
 
             sns_info_list = []
             for item in data["feeds"]["items"]:
+                # 跳過付費文章
+                if item["type"] == "FEED_ITEM_STAR_POST_PAID":
+                    continue
                 published_at_datetime = convert_to_datetime(item["publishedAt"])
                 if last_updated < published_at_datetime:
                     images = []
