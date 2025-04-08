@@ -9,3 +9,4 @@ fake-useragent==1.4.0
 firebase-admin==6.5.0
 python-dotenv==1.0.1
 py-cord==2.5.0
+python-dateutil==2.9.0
