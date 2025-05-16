@@ -10,8 +10,8 @@ from firebase import Firebase
 
 load_dotenv()
 firebase = Firebase()
-el7zup_bot = EL7ZUPBot(firebase)
-el7zup_bot.execute()
+# el7zup_bot = EL7ZUPBot(firebase)
+# el7zup_bot.execute()
 bstage_bot = BstageBot(firebase)
 bstage_bot.execute()
 
