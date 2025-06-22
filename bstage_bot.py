@@ -9,6 +9,7 @@ from dateutil import parser
 from fake_useragent import UserAgent
 
 import discord_bot
+import m3u8
 from firebase import Firebase
 from sns_info import SnsInfo, Profile
 from sns_type import SnsType
@@ -76,8 +77,22 @@ class BstageBot:
                         embeds=discord_bot.generate_embeds(sns_info))
                     videos = sns_info.videos
                     if videos is not None and len(videos) > 0:
-                        discord_bot.send_message_by_api(discord_channel_id=discord_channel_id,
-                                                        content="\n".join(sns_info.videos))
+                        file_paths = []
+                        for video in videos:
+                            file_path = m3u8.download_m3u8_to_mp4(video, f"{time.time()}.mp4")
+                            file_paths.append(file_path)
+
+                        # 直接傳入檔案路徑列表
+                        discord_bot.send_message_by_api(
+                            discord_channel_id=discord_channel_id,
+                            content="",
+                            files=file_paths  # 直接傳入路徑列表
+                        )
+
+                        # 清理暫存檔案
+                        for file_path in file_paths:
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
                 # 儲存最新發文時間
                 updated_at = max([sns_info.timestamp for sns_info in sns_info_list])
                 print(f"更新最後發文時間: {updated_at}")
@@ -131,12 +146,29 @@ class BstageBot:
                 print(f"有 {post_count} 則發文")
                 for sns_info in reversed(sns_info_list):
                     discord_bot.send_message_by_api(
-                        discord_channel_id=discord_channel_id, content=sns_info.post_link,
-                        embeds=discord_bot.generate_embeds(sns_info))
+                        discord_channel_id=discord_channel_id,
+                        content=sns_info.post_link,
+                        embeds=discord_bot.generate_embeds(sns_info)
+                    )
+
                     videos = sns_info.videos
                     if videos is not None and len(videos) > 0:
-                        discord_bot.send_message_by_api(discord_channel_id=discord_channel_id,
-                                                        content="\n".join(sns_info.videos))
+                        file_paths = []
+                        for video in videos:
+                            file_path = m3u8.download_m3u8_to_mp4(video, f"{time.time()}.mp4")
+                            file_paths.append(file_path)
+
+                        # 直接傳入檔案路徑列表
+                        discord_bot.send_message_by_api(
+                            discord_channel_id=discord_channel_id,
+                            content="",
+                            files=file_paths  # 直接傳入路徑列表
+                        )
+
+                        # 清理暫存檔案
+                        for file_path in file_paths:
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
                 # 儲存最新發文時間
                 updated_at = max([sns_info.timestamp for sns_info in sns_info_list])
                 print(f"更新最後發文時間: {updated_at}")

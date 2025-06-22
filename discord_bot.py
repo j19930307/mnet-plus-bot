@@ -28,23 +28,50 @@ def generate_embeds(sns_info: SnsInfo):
     return embeds
 
 
-def send_message_by_api(discord_channel_id: str, content: str, embeds=None):
+def send_message_by_api(discord_channel_id: str, content: str, embeds=None, files=None):
     if embeds is None:
         embeds = []
+
     url = f"https://discord.com/api/channels/{discord_channel_id}/messages"
-    data = dict()
-    data["content"] = content
-    if embeds is not None:
-        data["embeds"] = [embed.to_dict() for embed in embeds]
-    payload = json.dumps(data)
+
     headers = {
-        'Content-Type': 'application/json',
         'Authorization': f'Bot {os.environ["BOT_TOKEN"]}',
     }
 
-    response = requests.request("POST", url, headers=headers, data=payload)
+    # 如果有檔案，使用 multipart/form-data
+    if files is not None and len(files) > 0:
+        # 準備 multipart 資料
+        data = {
+            'content': content,
+        }
+        if embeds:
+            data['embeds'] = json.dumps([embed.to_dict() for embed in embeds])
+
+        # 準備檔案
+        files_dict = {}
+        for i, file_path in enumerate(files):
+            files_dict[f'files[{i}]'] = open(file_path, 'rb')
+
+        try:
+            response = requests.post(url, headers=headers, data=data, files=files_dict)
+        finally:
+            # 關閉所有檔案
+            for file_obj in files_dict.values():
+                file_obj.close()
+    else:
+        # 沒有檔案時使用 JSON
+        data = {
+            "content": content
+        }
+        if embeds:
+            data["embeds"] = [embed.to_dict() for embed in embeds]
+
+        headers['Content-Type'] = 'application/json'
+        payload = json.dumps(data)
+        response = requests.post(url, headers=headers, data=payload)
 
     print(response.text)
+    return response
 
 
 class DiscordBot:
