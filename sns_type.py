@@ -6,3 +6,4 @@ class SnsType(Enum):
     TWITTER = "Twitter"
     BSTAGE = "b.stage"
     MNET_PLUS = "Mnet Plus"
+    BERRIZ = "Berriz"
