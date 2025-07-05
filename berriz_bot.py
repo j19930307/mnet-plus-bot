@@ -62,7 +62,7 @@ class BerrizBot:
             post = content['post']
             writer = content['writer']
             created_at = datetime.strptime(post['createdAt'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-            if created_at < last_updated:
+            if created_at <= last_updated:
                 continue
 
             # 提取所有照片的URL
