@@ -127,10 +127,15 @@ class BstageBot:
                     if item.get("images") is not None:
                         images += [image for image in item.get("images")]
                     if item.get("video") is not None:
+                        artist_name = 'limelight' if artist == 'madein' else artist
                         images += [
-                            f"https://image.static.bstage.in/cdn-cgi/image/metadata=none/{artist}" + thumbnail["path"]
-                            for thumbnail in item["video"]["thumbnailPaths"]]
-                        videos.append(f"https://media.static.bstage.in/{artist}" + item["video"]["hlsPath"]["path"])
+                            f"https://image.static.bstage.in/cdn-cgi/image/metadata=none/{artist_name}" +
+                            thumbnail["path"]
+                            for thumbnail in item["video"]["thumbnailPaths"]
+                        ]
+                        videos.append(
+                            f"https://media.static.bstage.in/{artist_name}" + item["video"]["hlsPath"]["path"]
+                        )
                     sns_info = SnsInfo(
                         post_link=f"https://artist.mnetplus.world/main/stg/{artist}/story/feed/{item['typeId']}",
                         profile=Profile(item["author"]["nickname"], item["author"]["avatarImgPath"]),
@@ -177,3 +182,9 @@ class BstageBot:
                 print("無新發文")
             print("抓取結束")
 
+
+if __name__ == '__main__':
+    file_paths = []
+    file_path = m3u8.download_m3u8_to_mp4(
+        "https://media.static.bstage.in/limelight/media/68c166446b9b4960d49eac08/hls/ori.m3u8", f"{time.time()}.mp4")
+    file_paths.append(file_path)
