@@ -1,3 +1,4 @@
+git+https://github.com/j19930307/sns-core.git@048d8a9
 requests==2.32.4
 aiohttp==3.9.3
 selenium==4.14.0
