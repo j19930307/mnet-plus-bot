@@ -1,7 +1,9 @@
 import json
 import os
 import random
+import re
 import time
+from typing import Any
 
 from sns_core.clients.discord_messages import post_message, build_embeds
 from sns_core.utils.media import download_video_to_local, cleanup_local_files, download_m3u8_to_mp4
@@ -19,6 +21,7 @@ from sns_core import (
 ua = UserAgent()
 user_agent = ua.random
 headers = {'user-agent': user_agent}
+JsonDict = dict[str, Any]
 
 
 def convert_to_datetime(date_string):
@@ -28,6 +31,139 @@ def convert_to_datetime(date_string):
 class BstageBot:
     def __init__(self, firestore: FirestoreSubscriptionStore):
         self.__firestore = firestore
+        self.__mnet_plus_build_id = None
+        self.__bstage_build_ids = {}
+
+    def _fetch_mnet_plus_build_id(self):
+        response = requests.get("https://artist.mnetplus.world", headers=headers, timeout=20)
+        response.raise_for_status()
+
+        build_id_match = re.search(r'"buildId":"([^"]+)"', response.text)
+        if build_id_match is None:
+            raise ValueError("找不到 Mnet Plus buildId")
+        return build_id_match.group(1)
+
+    def _get_mnet_plus_build_id(self):
+        if self.__mnet_plus_build_id is None:
+            self.__mnet_plus_build_id = self._fetch_mnet_plus_build_id()
+        return self.__mnet_plus_build_id
+
+    def _fetch_bstage_build_id(self, artist):
+        response = requests.get(f"https://{artist}.bstage.in", headers=headers, timeout=20)
+        response.raise_for_status()
+
+        build_id_match = re.search(r'"buildId":"([^"]+)"', response.text)
+        if build_id_match is None:
+            raise ValueError("找不到 b.stage buildId")
+        return build_id_match.group(1)
+
+    def _get_bstage_build_id(self, artist):
+        if artist not in self.__bstage_build_ids:
+            self.__bstage_build_ids[artist] = self._fetch_bstage_build_id(artist)
+        return self.__bstage_build_ids[artist]
+
+    def _fetch_post_detail(self, detail_url: str, *, params: dict[str, str] | None = None) -> JsonDict:
+        response = requests.get(
+            detail_url,
+            headers=headers,
+            params=params,
+            timeout=20,
+        )
+        response.raise_for_status()
+        result = json.loads(response.text)
+        return result["pageProps"]["post"]
+
+    def _fetch_mnet_plus_post_detail(self, artist: str, post_id: str) -> JsonDict:
+        build_id = self._get_mnet_plus_build_id()
+        detail_url = (
+            f"https://artist.mnetplus.world/_next/data/{build_id}/ko/main/stg/"
+            f"{artist}/story/feed/{post_id}.json"
+        )
+        try:
+            return self._fetch_post_detail(
+                detail_url,
+                params={"basePath": artist, "id": post_id},
+            )
+        except requests.HTTPError as error:
+            if error.response is None or error.response.status_code != 404:
+                raise
+            self.__mnet_plus_build_id = self._fetch_mnet_plus_build_id()
+            detail_url = (
+                f"https://artist.mnetplus.world/_next/data/{self.__mnet_plus_build_id}/ko/main/stg/"
+                f"{artist}/story/feed/{post_id}.json"
+            )
+            return self._fetch_post_detail(
+                detail_url,
+                params={"basePath": artist, "id": post_id},
+            )
+
+    def _fetch_bstage_post_detail(self, artist: str, post_id: str) -> JsonDict:
+        build_id = self._get_bstage_build_id(artist)
+        detail_url = f"https://{artist}.bstage.in/_next/data/{build_id}/ko/story/feed/{post_id}.json"
+        try:
+            return self._fetch_post_detail(detail_url)
+        except requests.HTTPError as error:
+            if error.response is None or error.response.status_code != 404:
+                raise
+            self.__bstage_build_ids[artist] = self._fetch_bstage_build_id(artist)
+            detail_url = f"https://{artist}.bstage.in/_next/data/{self.__bstage_build_ids[artist]}/ko/story/feed/{post_id}.json"
+            return self._fetch_post_detail(detail_url)
+
+    def _build_mnet_plus_social_post(self, artist: str, post_id: str):
+        images = []
+        videos = []
+        post: JsonDict | None = None
+
+        try:
+            post = self._fetch_mnet_plus_post_detail(artist, post_id)
+        except Exception as error:
+            print(f"Mnet Plus 詳細貼文抓取失敗 {artist}/{post_id}: {error}")
+
+        if post is None:
+            raise ValueError(f"無法取得 Mnet Plus 貼文詳細資料: {artist}/{post_id}")
+
+        images.extend(post.get("images") or [])
+
+        video = post.get("video")
+        if isinstance(video, dict):
+            videos.append(video.get("hlsPath"))
+
+        description = post["body"]
+        author = post["author"]
+
+        return SocialPost(
+            post_link=f"https://artist.mnetplus.world/main/stg/{artist}/story/feed/{post_id}",
+            author=PostAuthor(author["nickname"], author["avatarImgPath"]),
+            text=description,
+            images=images,
+            videos=videos,
+            created_at=convert_to_datetime(post["publishedAt"]),
+        )
+
+    def _build_bstage_social_post(self, artist: str, post_id: str):
+        post = self._fetch_bstage_post_detail(artist, post_id)
+
+        images = list(post.get("images") or [])
+        file_paths = []
+        video = post.get("video")
+        if isinstance(video, dict):
+            hls_path = video.get("hlsPath")
+            if isinstance(hls_path, dict) and hls_path.get("path"):
+                file_path = download_video_to_local(
+                    video_url=f"https://media.static.bstage.in/{artist}{hls_path['path']}",
+                    filename=f"{time.time()}.mp4"
+                )
+                file_paths.append(file_path)
+
+        author = post["author"]
+        return SocialPost(
+            post_link=f"https://{artist}.bstage.in/story/feed/{post_id}",
+            author=PostAuthor(author["nickname"], author["avatarImgPath"]),
+            text=post.get("body") or "",
+            images=images,
+            file_paths=file_paths,
+            created_at=convert_to_datetime(post["publishedAt"]),
+        )
 
     async def execute(self):
         bstage_subscribed_list = await self.__firestore.get_subscribed_list(SocialPlatform.BSTAGE)
@@ -52,24 +188,7 @@ class BstageBot:
                     continue
                 published_at_datetime = convert_to_datetime(item["publishedAt"])
                 if last_updated < published_at_datetime:
-                    images = []
-                    file_paths = []
-                    if item.get("images") is not None:
-                        images += [image for image in item.get("images")]
-                    if item.get("video") is not None:
-                        file_path = download_video_to_local(
-                            video_url=f"https://media.static.bstage.in/{artist}" + item["video"]["hlsPath"]["path"],
-                            filename=f"{time.time()}.mp4"
-                        )
-                        file_paths.append(file_path)
-                    social_post = SocialPost(
-                        post_link=f"https://{artist}.bstage.in/story/feed/{item['typeId']}",
-                        author=PostAuthor(item["author"]["nickname"], item["author"]["avatarImgPath"]),
-                        text=item["description"],
-                        images=images,
-                        file_paths=file_paths,
-                        created_at=published_at_datetime)
-                    print(social_post)
+                    social_post = self._build_bstage_social_post(artist=artist, post_id=item["typeId"])
                     social_posts.append(social_post)
                 else:
                     break
@@ -78,6 +197,7 @@ class BstageBot:
             if post_count != 0:
                 print(f"有 {post_count} 則發文")
                 for social_post in reversed(social_posts):
+                    print(social_post)
                     post_message(
                         channel_id=discord_channel_id,
                         content=social_post.post_link,
@@ -115,25 +235,7 @@ class BstageBot:
                     continue
                 published_at_datetime = convert_to_datetime(item["publishedAt"])
                 if last_updated < published_at_datetime:
-                    images = []
-                    videos = []
-                    if item.get("images") is not None:
-                        images += [image for image in item.get("images")]
-                    if item.get("video") is not None:
-                        artist_name = 'limelight' if artist == 'madein' else artist
-                        images += [
-                            f"https://image.static.bstage.in/cdn-cgi/image/metadata=none/{artist_name}" +
-                            thumbnail["path"]
-                            for thumbnail in item["video"]["thumbnailPaths"]
-                        ]
-                        videos.append(
-                            f"https://media.static.bstage.in/{artist_name}" + item["video"]["hlsPath"]["path"]
-                        )
-                    social_post = SocialPost(
-                        post_link=f"https://artist.mnetplus.world/main/stg/{artist}/story/feed/{item['typeId']}",
-                        author=PostAuthor(item["author"]["nickname"], item["author"]["avatarImgPath"]),
-                        text=item["description"], images=images, videos=videos,
-                        created_at=published_at_datetime)
+                    social_post = self._build_mnet_plus_social_post(artist=artist, post_id=item["typeId"])
                     social_posts.append(social_post)
                 else:
                     break
@@ -142,6 +244,7 @@ class BstageBot:
             if post_count != 0:
                 print(f"有 {post_count} 則發文")
                 for social_post in reversed(social_posts):
+                    print(social_post)
                     post_message(
                         channel_id=discord_channel_id,
                         content=social_post.post_link,
