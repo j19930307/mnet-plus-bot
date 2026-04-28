@@ -128,7 +128,7 @@ class BstageBot:
         if isinstance(video, dict):
             videos.append(video.get("hlsPath"))
 
-        description = post["body"]
+        description = post.get("body") or ""
         author = post["author"]
 
         return SocialPost(
